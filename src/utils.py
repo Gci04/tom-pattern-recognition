@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-import zipfile
+import zipfile, re
 
 # For data preprocessing
 from sklearn.preprocessing import MinMaxScaler
@@ -16,8 +16,32 @@ def get_data(data_path='../Data/sample_data.zip', target_metric='total_changed')
 
     result = {}
     for name, group in repository_hist_df.groupby('full_name'):
-        result[name] = group.sort_index()[target_metric].values.astype(np.float64)
+        group.sort_index(inplace=True)
+        temp = {}
+        # print(group[target_metric])
+        temp[target_metric] = group[target_metric].values.astype(np.float64)
+        # print(result[name][target_metric])
+        temp['time_stamps'] = group.index
+        result[name] = temp
     return result
+def read_issues():
+    res = []
+    COMMA_MATCHER = re.compile(r",(?=(?:[^\"']*[\"'][^\"']*[\"'])*[^\"']*$)")
+    with zipfile.ZipFile('../Data/sample_data.zip') as z:
+        with z.open('issues_data.csv') as f:
+            for line in f.readlines():
+                line = line.decode("utf-8").strip()
+                split_result = COMMA_MATCHER.split(line)
+                if len(split_result) != 21:
+                    tokens = line.split(',')
+                    if len(tokens) == 21:
+                        res.append(tokens)
+                else:
+                    res.append(split_result)
+
+    df = pd.DataFrame(res[1:],columns=res[0])
+    return df
+    # print(np.unique(res,return_counts=True))
 
 def search_pattern(T, query_pattern, max_distance=1.0):
     distance_profile = stumpy.match(query_pattern, T, max_distance=max_distance)
