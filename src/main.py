@@ -80,16 +80,18 @@ if __name__ == '__main__':
         Ts.append(v.get('total_changed'))
         projects_names_map[i] = k
 
-    print(projects_names_map)
     print_repos_stats()
     m = 14
     repo_idx, seq_idx, all_patterns = approach3(Ts, m)
-    print(projects_names_map[repo_idx])
-    print(all_data[projects_names_map[repo_idx]].get('time_stamps')[seq_idx:seq_idx+m])
 
     for k, v in all_patterns.items():
-        print(projects_names_map[k])
-        print(all_data[projects_names_map[k]].get('time_stamps')[v[0]:v[0]+m])
+        repo_name = projects_names_map[k]
+        print(f'\n{repo_name} patterns (anomalies)')
+        for idx in v[:5]:
+            repo_timestamps = all_data[repo_name].get('time_stamps')
+            start = repo_timestamps[idx]
+            end = repo_timestamps[idx+m]
+            print(f'from {start} to {end}')
 
     # for m in [5, 7, 14, 21, 30, 40, 50]:
     #     for d in [0.001, 0.01, 0.1, 1.0, 2.0, 3.0]:

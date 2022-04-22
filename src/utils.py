@@ -41,7 +41,6 @@ def read_issues():
 
     df = pd.DataFrame(res[1:],columns=res[0])
     return df
-    # print(np.unique(res,return_counts=True))
 
 def search_pattern(T, query_pattern, max_distance=1.0):
     distance_profile = stumpy.match(query_pattern, T, max_distance=max_distance)
