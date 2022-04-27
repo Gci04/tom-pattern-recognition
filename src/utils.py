@@ -18,9 +18,7 @@ def get_data(data_path='../Data/sample_data.zip', target_metric='total_changed')
     for name, group in repository_hist_df.groupby('full_name'):
         group.sort_index(inplace=True)
         temp = {}
-        # print(group[target_metric])
         temp[target_metric] = group[target_metric].values.astype(np.float64)
-        # print(result[name][target_metric])
         temp['time_stamps'] = group.index
         result[name] = temp
     return result
