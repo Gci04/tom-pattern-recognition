@@ -2,7 +2,6 @@ from utils import *
 import numpy as np
 
 all_data = get_data()
-del all_data['xavzelada/repo_test']
 issues_df = read_issues()
 
 def approach1(Ts, m, threshold_dist=0.01, save_plots=False):
@@ -50,7 +49,11 @@ def approach3(Ts, m):
 
     for i in range(len(Ts)):
         distance_profile = search_pattern(Ts[i], consensus_pattern)
-        result[i] = distance_profile[:,1]
+        try:
+            result[i] = distance_profile[:,1]
+        except Exception as e:
+            print(distance_profile)
+
         if central_Ts_idx == i : continue
         tot_found += len(distance_profile)
         if len(distance_profile) == 0:
@@ -73,27 +76,54 @@ def print_repos_stats():
         print(f'{k} : {len(v.get("time_stamps"))} commits')
 
 if __name__ == '__main__':
+    # all_data
     Ts = []
     projects_names_map = {}
+    # data_distribution()
 
     for i, (k, v) in enumerate(all_data.items()):
         Ts.append(v.get('total_changed'))
         projects_names_map[i] = k
 
-    print_repos_stats()
-    m = 14
+    # print_repos_stats()
+    m = 9
+    # for m in [5,7,10,14,21]
     repo_idx, seq_idx, all_patterns = approach3(Ts, m)
 
+    d = {}
+    all_found = {}
     for k, v in all_patterns.items():
         repo_name = projects_names_map[k]
+        temp = []
+        temp2 = []
         print(f'\n{repo_name} patterns (anomalies)')
-        for idx in v[:5]:
+        for idx in v[:]:
             repo_timestamps = all_data[repo_name].get('time_stamps')
-            start = repo_timestamps[idx]
-            end = repo_timestamps[idx+m]
-            print(f'from {start} to {end}')
+            first_commit = min(repo_timestamps)
+            mask = np.where(first_commit.replace(year = first_commit.year + 1) > repo_timestamps)[0]
+            upper_bound = max(repo_timestamps[mask])
 
-    # for m in [5, 7, 14, 21, 30, 40, 50]:
-    #     for d in [0.001, 0.01, 0.1, 1.0, 2.0, 3.0]:
-    #         print(f'({m}, {d})')
-    #         approach1(Ts,  m=m, threshold_dist=d)
+            start = repo_timestamps[idx]
+            try:
+                end = repo_timestamps[idx+m]
+            except Exception as e:
+                end = repo_timestamps[idx+m-1]
+
+            print(f'from {start} to {end}')
+            if upper_bound > start:
+                temp2.append((upper_bound - start).days // 30)
+            temp.append([start,end])
+        d[repo_name] = sorted(temp2)
+        all_found[repo_name] = temp
+
+    for repo_name, patterns in all_found.items():
+        print(repo_name)
+        print(d[repo_name])
+        for p in patterns:
+            temp = issues_df.query('repo_fullname == @repo_name')
+            num_created = len(temp.query('(created_at_ext > @p[0] and created_at_ext < @p[1])'))
+            num_updated = len(temp.query('updated_at_ext > @p[0] and updated_at_ext < @p[1]'))
+            num_opend = len(temp.query('created_at_ext < @p[1] and state == "open"'))
+            num_closed = len(temp.query('created_at_ext < @p[1] and state == "closed"'))
+            print(f'Issues : created {num_created}, updated {num_updated}, open {num_opend}, overall closed {num_closed}')
+        print('\n')
