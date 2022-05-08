@@ -20,7 +20,7 @@ def get_data(data_path='../Data/tom_sample_data.zip', target_file='tom_commits_m
     for name, group in repository_hist_df.groupby('full_name'):
         group.sort_index(inplace=True)
         a = group.index[-1] - group.index[0]
-        if a.days > 365 or group.shape[0] < 50: continue
+        if a.days < 365 or group.shape[0] < 50: continue
         if group.shape[0] > max_commits:
             max_commits = group.shape[0]
         temp = {}
@@ -28,7 +28,7 @@ def get_data(data_path='../Data/tom_sample_data.zip', target_file='tom_commits_m
         temp['time_stamps'] = group.index
         result[name] = temp
     print(f'total filtered repos : {len(result)}')
-    print(f'Max commits : {max_commits}')
+    print(f'Max commits in data : {max_commits}')
     return result
 
 def read_issues(data_path='../Data/tom_sample_data.zip'):
