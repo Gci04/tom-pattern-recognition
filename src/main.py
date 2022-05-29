@@ -1,129 +1,88 @@
 from utils import *
 import numpy as np
+from datetime import datetime
+import json, sys
+from argparse import ArgumentParser
 
-all_data = get_data()
-issues_df = read_issues()
+def approach1(Ts, p, z, d=0.3333):
+    R = []
+    all_patterns = {}
+    for m in np.arange(3,7):
+        k = 0
+        print(f'subsequence : {m}')
+        central_radius, central_Ts_idx, central_subseq_idx = consensus_motif(Ts, m)
+        consensus_pattern = Ts[central_Ts_idx][central_subseq_idx:central_subseq_idx+m]
 
-def approach1(Ts, m, threshold_dist=0.01, save_plots=False):
-    '''Maximize the number of matches of Q. For each repo time series find a
-    pattern and then match with all other repositories time series'''
-    result = {}
-    N = len(Ts)
-    for i in range(N):
-        _ , q = get_topk_motifs(Ts[i], k=5, m=m)
-        count = 0
-        for j in range(N):
-            if i == j: continue
-            distance_profile = search_pattern(Ts[j], q[0], max_distance=threshold_dist)
-            count += len(distance_profile)
+        match_collection = {}
+        print(f'Consensus pattern : {*consensus_pattern,}')
+        print(f'Radius {central_radius}')
+        for i in range(len(Ts)):
+            distance_profile = search_pattern(Ts[i], consensus_pattern, max_distance=central_radius*0.5)
+            if distance_profile is None: continue
+            tmatches = len(distance_profile)
+            if tmatches > z and tmatches < 6:
+                match_collection[i] = distance_profile[:,1]
+                k += 1
+        if k > 0 :
+            pr = k/len(Ts)
+            print(pr)
+            if pr > 0.05 and pr < 0.20:
+                all_patterns[m] = {}
+                all_patterns[m]['consensus_pattern'] = consensus_pattern
+                all_patterns[m]['patterns'] = match_collection
+                all_patterns[m]['percentage'] = pr
 
-        result[i] = count
-    if min(result.values()) > 0: print(result)
-    selected_t = Ts[max(result, key=result.get)]
-    mp = stumpy.stump(selected_t, m=m)
-    top_k_motifs_idx = np.argsort(mp[:, 0])[:10]
+        if k < p and k > len(Ts)*0.05:
+            print(f'adding : {*consensus_pattern,}')
+            R.append(consensus_pattern)
 
-    if save_plots :
-        plot_patterns(selected_t, mp, top_k_motifs_idx, m, save=save_plots)
+    return R, all_patterns
 
-def approach2(Ts, m):
-    '''Join all the repositories and find a pattern'''
-    joinedTs = np.concatenate(Ts)
-    print(joinedTs.shape)
-    _, q = get_topk_motifs(joinedTs, k=1, m=m)
-    print(q)
-
-def approach3(Ts, m):
-    '''Find the z-normalized consensus pattern of multiple time series'''
-    central_radius, central_Ts_idx, central_subseq_idx = consensus_motif(Ts, m)
-    consensus_pattern = Ts[central_Ts_idx][central_subseq_idx:central_subseq_idx+m]
-
-    result = {}
-    tot_found = 0
-    overall_distance = 0.0
-    min_found = np.inf
-    min_indx = central_Ts_idx
-
-    print(f'Consensus pattern : {*consensus_pattern,}')
-    print(f'Central radius : {central_radius}')
-
-    for i in range(len(Ts)):
-        distance_profile = search_pattern(Ts[i], consensus_pattern)
-        try:
-            result[i] = distance_profile[:,1]
-        except Exception as e:
-            print(distance_profile)
-
-        if central_Ts_idx == i : continue
-        tot_found += len(distance_profile)
-        if len(distance_profile) == 0:
-            min_indx = 0
-            continue
-        overall_distance += distance_profile[:,0].sum()
-        if len(distance_profile) < min_found:
-            min_found = len(distance_profile)
-            min_indx = i
-
-    print(f'Total Distance : {overall_distance}')
-    print(f'Total Found patterns : {tot_found}')
-    print(f'Min Found patterns : {min_found}, indx: {min_indx}')
-
-    return central_Ts_idx, central_subseq_idx, result
-
-def print_repos_stats():
-    global all_data
-    for k, v in all_data.items():
-        print(f'{k} : {len(v.get("time_stamps"))} commits')
-
-if __name__ == '__main__':
-    # all_data
+def get_patterns(target_metric, all_data):
     Ts = []
     projects_names_map = {}
-    # data_distribution()
+    i = 0
+    for k, v in all_data.items():
+        repo_timestamps = v.get('time_stamps')
+        last_commit = max(repo_timestamps)
+        if last_commit.is_leap_year and last_commit.day > 28:
+            last_commit = last_commit.replace(day = last_commit.day - 2)
 
-    for i, (k, v) in enumerate(all_data.items()):
-        Ts.append(v.get('total_changed'))
-        projects_names_map[i] = k
+        mask = np.where(last_commit.replace(year = last_commit.year - 1) > repo_timestamps)[0]
+        res = v.get(target_metric)[mask]
+        if(len(res) > 10):
+            Ts.append(res)
+            projects_names_map[i] = k
+            i+=1
 
-    # print_repos_stats()
-    m = 9
-    # for m in [5,7,10,14,21]
-    repo_idx, seq_idx, all_patterns = approach3(Ts, m)
+    p = len(Ts)*0.25
+    z = 4
+    resultR, allPatterns = approach1(Ts, p, z, d=0.3333)
 
-    d = {}
-    all_found = {}
-    for k, v in all_patterns.items():
-        repo_name = projects_names_map[k]
-        temp = []
-        temp2 = []
-        print(f'\n{repo_name} patterns (anomalies)')
-        for idx in v[:]:
-            repo_timestamps = all_data[repo_name].get('time_stamps')
-            first_commit = min(repo_timestamps)
-            mask = np.where(first_commit.replace(year = first_commit.year + 1) > repo_timestamps)[0]
-            upper_bound = max(repo_timestamps[mask])
+    if len(resultR) == 0: return None
 
-            start = repo_timestamps[idx]
-            try:
-                end = repo_timestamps[idx+m]
-            except Exception as e:
-                end = repo_timestamps[idx+m-1]
+    overall_result = {}
+    for m, sub_data in allPatterns.items():
+        subsequence_result = {}
+        for i, patterns_found in sub_data['patterns'].items():
+            repo_name = projects_names_map[i]
+            temp = {}
+            for n, p in enumerate(patterns_found,1):
+                temp[f'position {n}'] = [datetime.strftime(l,'%Y-%m-%d %H:%M:%S') for l in all_data[repo_name]['time_stamps'][p:p+5]]
+            subsequence_result[repo_name] = temp
+        overall_result[str(m)] = subsequence_result
 
-            print(f'from {start} to {end}')
-            if upper_bound > start:
-                temp2.append((upper_bound - start).days // 30)
-            temp.append([start,end])
-        d[repo_name] = sorted(temp2)
-        all_found[repo_name] = temp
+    print('Saving result ...')
+    with open(f'../results/{target_metric}_result.json', 'w') as fp:
+        json.dump(overall_result, fp)
 
-    for repo_name, patterns in all_found.items():
-        print(repo_name)
-        print(d[repo_name])
-        for p in patterns:
-            temp = issues_df.query('repo_fullname == @repo_name')
-            num_created = len(temp.query('(created_at_ext > @p[0] and created_at_ext < @p[1])'))
-            num_updated = len(temp.query('updated_at_ext > @p[0] and updated_at_ext < @p[1]'))
-            num_opend = len(temp.query('created_at_ext < @p[1] and state == "open"'))
-            num_closed = len(temp.query('created_at_ext < @p[1] and state == "closed"'))
-            print(f'Issues : created {num_created}, updated {num_updated}, open {num_opend}, overall closed {num_closed}')
-        print('\n')
+if __name__ == '__main__':
+    parser = ArgumentParser()
+    parser.add_argument('-metric', '--target_metrics', nargs='+', default=['total_removed', 'total_added', 'total_changed'])
+    args = parser.parse_args()
+    print('Reading Data...')
+    all_data = get_data(target_metrics=args.target_metrics)
+    print('Finished reading data...')
+    for metric in args.target_metrics:
+        print(f'getting patterns for [{metric}]')
+        get_patterns(metric, all_data)
