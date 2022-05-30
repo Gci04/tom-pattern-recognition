@@ -18,6 +18,7 @@ All the libraries can be pip installed
 1. Install dependencies which are specified in requirements.txt. use `pip install -r requirements.txt` or `pip3 install -r requirements.txt`
 1. Raw Data is being kept [here](Data) within this repo.
 1. Navigate to `src` then train and test the model by running train and test scripts : `python main.py`.
+1. The found patterns are saved in `.json` file in the `results` directory
 
 ## Repository directory layout
 
@@ -25,14 +26,16 @@ All the libraries can be pip installed
     .
     ├── Data                    # datasets directory
     │   ├── Repositories.csv    # ..
-    │   ├── sample_data.zip     # ..
+    │   ├── sample_data.zip     # small dataset
+    │   ├── tom_sample_data.zip # main datasets for extracting patterns (it contains information about commits, forks, issues, workflow, users and pulls)
     │   └── README.md           # Dataset info
     ├── Notebooks               # Jupyter notebooks with examples and EDA
-    │   ├── TOM_SUMPY.ipynb     # Training Dataset folder
+    │   ├── TOM_SUMPY.ipynb     #
     │   └── README.md           # Notebooks info
+    ├── results                 # directory where results are dumped
     ├── src                     # Implementation directory
     │   ├── main.py             # file with main implementation
-    │   └──utils.py             # Main file for utils      
+    │   └── utils.py            # Main file for utils      
     ├── requirements.txt
     └── README.md
 
