@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 from sklearn.preprocessing import MinMaxScaler
 import matplotlib.pyplot as plt
 
+pd.options.mode.chained_assignment = None
 # For matrix profile calculations
 import stumpy
 
