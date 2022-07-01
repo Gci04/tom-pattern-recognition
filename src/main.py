@@ -4,18 +4,18 @@ from datetime import datetime
 import json, sys
 from argparse import ArgumentParser
 
-def approach1(Ts, p, z, d=0.3333):
+def main(Ts, p, z, d=0.3333):
     R = set()
     all_patterns = {}
     for m in np.arange(5,15):
         k = 0
-        print(f'subsequence : {m}')
+        #print(f'subsequence : {m}')
         central_radius, central_Ts_idx, central_subseq_idx = consensus_motif(Ts, m)
         consensus_pattern = Ts[central_Ts_idx][central_subseq_idx:central_subseq_idx+m]
 
-        
-        print(f'Consensus pattern : {*consensus_pattern,}')
-        print(f'Radius {central_radius}')
+
+        #print(f'Consensus pattern : {*consensus_pattern,}')
+        #print(f'Radius {central_radius}')
         for ii, threshold in enumerate([central_radius/e for e in range(1,10)]):
             match_collection = {}
             k = 0
@@ -28,7 +28,6 @@ def approach1(Ts, p, z, d=0.3333):
                     k += 1
             if k > 0 :
                 pr = k/len(Ts)
-                #print(threshold,pr)
                 if pr > 0.05 and pr < 0.20:
                     print(f'threshold:{round(threshold,4)}, percentage: {round(pr,4)}')
                     all_patterns[m] = {}
@@ -38,7 +37,7 @@ def approach1(Ts, p, z, d=0.3333):
                     all_patterns[m][f'threshold-{round(threshold,4)}']['percentage'] = round(pr,4)
 
             if k < p and k > len(Ts)*0.05:
-                print(f'adding : {*consensus_pattern,}')
+                #print(f'adding : {*consensus_pattern,}')
                 R.add(tuple(consensus_pattern))
 
     return R, all_patterns
@@ -57,7 +56,7 @@ def get_patterns(target_metric, all_data):
 
     p = len(Ts)*0.25
     z = 4
-    resultR, allPatterns = approach1(Ts, p, z, d=0.3333)
+    resultR, allPatterns = main(Ts, p, z, d=0.3333)
 
     if len(resultR) == 0: return None
 
@@ -77,7 +76,7 @@ def get_patterns(target_metric, all_data):
             subsequence_result[thrshld]['consensus_pattern'] =  thrshld_sub_data['consensus_pattern'].tolist()
         overall_result[str(m)] = subsequence_result
 
-    print('Saving result ...')
+    print(f'[{target_metric}] Saving result ...')
     with open(f'../results/{target_metric}_result.json', 'w') as fp:
         json.dump(overall_result, fp)
 
@@ -85,9 +84,13 @@ if __name__ == '__main__':
     parser = ArgumentParser()
     parser.add_argument('-metric', '--target_metrics', nargs='+', default=['total_removed', 'total_added', 'total_changed'])
     args = parser.parse_args()
+
     print('Reading Data...')
     all_data = get_data(target_metrics=args.target_metrics)
     print('Finished reading data...')
+
     for metric in args.target_metrics:
         print(f'getting patterns for [{metric}]')
         get_patterns(metric, all_data)
+
+    print('Done...')

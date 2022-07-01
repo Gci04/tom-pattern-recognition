@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 from sklearn.preprocessing import MinMaxScaler
 import matplotlib.pyplot as plt
 
+pd.options.mode.chained_assignment = None
 # For matrix profile calculations
 import stumpy
 
@@ -32,6 +33,21 @@ def get_data(data_path='../Data/tom_sample_data.zip', target_file='tom_commits_m
     print(f'total filtered repos : {len(result)}')
     print(f'Max commits in data : {max_commits}')
     return result
+
+def read_issues(data_path='../Data/tom_sample_data.zip'):
+    json_data = None
+    data = None
+    with zipfile.ZipFile(data_path, 'r') as z:
+        with z.open('tom_issues_info.json') as f:
+            data = f.read()
+            json_data = json.loads(data)
+
+    issues_df = pd.json_normalize(json_data['tom_issues_infos'])
+    cols_to_select = ['repo_fullname','title','state','created_at_ext','updated_at_ext','closed_at_ext','comments_count','body_length']
+    issues_df = issues_df[cols_to_select]
+    for col in ['created_at_ext', 'updated_at_ext', 'closed_at_ext']:
+        issues_df[col] = pd.to_datetime(pd.to_datetime(issues_df[col]).dt.strftime('%Y-%m-%d %H:%M:%S'))
+    return issues_df
 
 def data_distribution(data_path='../Data/tom_sample_data.zip', target_file='tom_commits_metrics.csv', target_metric='total_changed'):
     cols_to_select = ['commit_datetime', 'full_name'] + [target_metric]

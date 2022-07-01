@@ -17,8 +17,17 @@ All the libraries can be pip installed
 1. Navigate to repository folder
 1. Install dependencies which are specified in requirements.txt. use `pip install -r requirements.txt` or `pip3 install -r requirements.txt`
 1. Raw Data is being kept [here](Data) within this repo.
-1. Navigate to `src` then train and test the model by running train and test scripts : `python main.py`.
+1. Navigate to `src` then generate/find patterns using the command : `python main.py` parsing the appropiate arguments. **Note (this step can be skipped if the patterns are already existing in directory `results`)**
 1. The found patterns are saved in `.json` file in the `results` directory
+1. To detect found patterns (stored in `.json`) in a new repository : `python detect.py` parsing the appropiate arguments. i.e :
+```
+python detect.py -metric total_removed total_changed -m 10 -repo ../Data/test_repo.csv
+```
+1. To test with your own repository, parse the path to the `.csv` file containing the repo commit history. i.e
+```
+python detect.py -metric total_removed total_changed -m 10 -repo <you repo commit history path>
+```
+
 
 ## Repository directory layout
 
@@ -34,7 +43,8 @@ All the libraries can be pip installed
     │   └── README.md           # Notebooks info
     ├── results                 # directory where results are dumped
     ├── src                     # Implementation directory
-    │   ├── main.py             # file with main implementation
+    │   ├── main.py             # file with main implementation for finding patterns
+    │   ├── detect.py           # script for detecting found pattern in a given single repository
     │   └── utils.py            # Main file for utils      
     ├── requirements.txt
     └── README.md
